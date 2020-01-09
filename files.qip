@@ -1,0 +1,18 @@
+set_global_assignment -name QIP_FILE rtl/FX68K/fx68k.qip
+set_global_assignment -name QIP_FILE rtl/T80/T80.qip
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/sdram.sv
+set_global_assignment -name VHDL_FILE rtl/tapper.vhd
+set_global_assignment -name VHDL_FILE rtl/ctc_counter.vhd
+set_global_assignment -name VHDL_FILE rtl/ctc_controler.vhd
+set_global_assignment -name VHDL_FILE rtl/tapper_sound_board.vhd
+set_global_assignment -name VHDL_FILE rtl/YM2149_linmix_sep.vhd
+set_global_assignment -name VHDL_FILE rtl/gen_ram.vhd
+set_global_assignment -name VHDL_FILE rtl/cmos_ram.vhd
+set_global_assignment -name VHDL_FILE rtl/dpram.vhd
+
+set_global_assignment -name VHDL_FILE rtl/rom/tapper_sound_cpu.vhd
+
+set_global_assignment -name VHDL_FILE rtl/rom/midssio_82s123.vhd
+
+set_global_assignment -name VHDL_FILE rtl/pia6821.vhd
+set_global_assignment -name SYSTEMVERILOG_FILE Arcade-Tapper.sv
