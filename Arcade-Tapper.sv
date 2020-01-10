@@ -107,8 +107,11 @@ assign LED_POWER = 0;
 
 //assign HDMI_ARX = status[1] ? 8'd16 : status[2] ? 8'd4 : 8'd3;
 //assign HDMI_ARY = status[1] ? 8'd9  : status[2] ? 8'd3 : 8'd4;
-assign HDMI_ARX = status[1] ? 8'd16 : status[2] ? 8'd21 : 8'd20;
-assign HDMI_ARY = status[1] ? 8'd9  : status[2] ? 8'd20 : 8'd21;
+//assign HDMI_ARX = status[1] ? 8'd16 : status[2] ? 8'd21 : 8'd20;
+//;assign HDMI_ARY = status[1] ? 8'd9  : status[2] ? 8'd20 : 8'd21;
+assign HDMI_ARX = status[1] ? 8'd16 : 8'd4;
+assign HDMI_ARY = status[1] ? 8'd9  : 8'd3;
+
 
 `include "build_id.v" 
 localparam CONF_STR = {
@@ -117,16 +120,11 @@ localparam CONF_STR = {
 	//"H0O2,Orientation,Vert,Horz;",
 	"O35,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
 	"-;",
-	//"OA,Accelerator,Digital,Analog;",
-	//"OB,Steering,Digital,Analog;",
-	"-;",
 	"O6,Service,Off,On;",
 	//"O8,Demo Sounds,Off,On;",
-	//"O9,Show Lamps,Off,On;",
+	//"OC,Cabinet,Upright,Cocktail;",
 	"-;",
 	"R0,Reset;",
-	//"J1,Machine Gun,Missiles,Smoke Screen,Oil Slick,Weapon Truck,Gear Shift,Coin;",
-	//"jn,A,B,X,Y,L,R,Start;",
 	"J1,Serve,Start 1P,Start 2P,Coin;",
 	"jn,A,Start,Select,R;",
 	"V,v",`BUILD_DATE
@@ -208,12 +206,7 @@ wire [31:0] sp_do;
 //  E000 -  10FFF - Super Sound board ROM (8 bit)
 // 12000 -         Sprite ROMs (32 bit)
 
-//wire [24:0] rom_ioctl_addr = ~ioctl_addr[16] ? ioctl_addr : // 8 bit ROMs
-//                             {ioctl_addr[24:16], ioctl_addr[15], ioctl_addr[13:0], ioctl_addr[14]}; // 16 bit ROM
-
-//wire [24:0] sp_ioctl_addr = ioctl_addr - 17'h18000;
 wire [24:0] sp_ioctl_addr = ioctl_addr - 17'h12000; //SP ROM offset: 0x12000
-//wire [24:0] dl_addr = ioctl_addr - 18'h2e000; // background + char grfx offset
 wire [24:0] dl_addr = ioctl_addr - 18'h32000; // background + char grfx offset
 
 reg port1_req, port2_req;
@@ -234,11 +227,6 @@ sdram sdram
 
 	.cpu1_addr     ( ioctl_download ? 16'hffff : {1'b0, rom_addr[15:1]} ),
 	.cpu1_q        ( rom_do ),
-	// need higher priority for CSD
-	//.cpu2_addr     ( ioctl_download ? 16'hffff : (16'h8000 + csd_addr[14:1]) ),
-	//.cpu2_q        ( csd_do ),
-	//.cpu3_addr     ( ioctl_download ? 16'hffff : (16'h7000 + snd_addr[12:1]) ),
-	//.cpu3_q        ( snd_do ),
 	.cpu2_addr     ( ioctl_download ? 16'hffff : (16'h7000 + snd_addr[13:1]) ),
 	.cpu2_q        ( snd_do ),
 	
@@ -246,7 +234,6 @@ sdram sdram
 	// port2 for sprite graphics
 	.port2_req     ( port2_req ),
 	.port2_ack     ( ),
-//	.port2_a       ( {sp_ioctl_addr[14:0], sp_ioctl_addr[16]} ), // merge sprite roms to 32-bit wide words
 	.port2_a       ( {sp_ioctl_addr[18:17], sp_ioctl_addr[14:0], sp_ioctl_addr[16]} ), // merge sprite roms to 32-bit wide words
 	.port2_ds      ( {sp_ioctl_addr[15], ~sp_ioctl_addr[15]} ),
 	.port2_we      ( ioctl_download ),
@@ -342,17 +329,17 @@ reg btn_right_2=0;
 reg btn_fire_2=0;
 reg btn_fire_22=0;
 
-wire m_up     = no_rotate ? btn_left  | joy[1] : btn_up    | joy[3];
-wire m_down   = no_rotate ? btn_right | joy[0] : btn_down  | joy[2];
-wire m_left   = no_rotate ? btn_down  | joy[2] : btn_left  | joy[1];
-wire m_right  = no_rotate ? btn_up    | joy[3] : btn_right | joy[0];
+wire m_up     =   btn_up    | joy[3];
+wire m_down   =   btn_down  | joy[2];
+wire m_left   =   btn_left  | joy[1];
+wire m_right  =   btn_right | joy[0];
 wire m_fire   = btn_fire | joy[4];
 //wire m_fire2  = btn_fire2 | joy[5];
 
-wire m_up_2     = no_rotate ? btn_left_2  | joy[1] : btn_up_2    | joy[3];
-wire m_down_2   = no_rotate ? btn_right_2 | joy[0] : btn_down_2  | joy[2];
-wire m_left_2   = no_rotate ? btn_down_2  | joy[2] : btn_left_2  | joy[1];
-wire m_right_2  = no_rotate ? btn_up_2    | joy[3] : btn_right_2 | joy[0];
+wire m_up_2     = btn_up_2    | joy[3];
+wire m_down_2   = btn_down_2  | joy[2];
+wire m_left_2   = btn_left_2  | joy[1];
+wire m_right_2  = btn_right_2 | joy[0];
 wire m_fire_2   = btn_fire_2;
 wire m_fire_22  = btn_fire_22;
 
@@ -361,13 +348,20 @@ wire m_start2 = btn_two_players | joy[6];
 wire m_coin   = btn_start_1 | joy[7];
 
 
-wire ce_pix;
+wire ce_pix_old;
 wire hblank, vblank;
 wire hs, vs;
 wire [2:0] r,g;
 wire [2:0] b;
 
-wire no_rotate = status[2] & ~direct_video;
+
+reg ce_pix;
+always @(posedge clk_sys) begin
+        reg [2:0] div;
+
+        div <= div + 1'd1;
+        ce_pix <= !div;
+end
 
 // 512x480
 //arcade_rotate_fx #(496,240,9) arcade_video
@@ -403,17 +397,17 @@ Tapper Tapper
 	.video_hblank(hblank),
 	.video_hs(hs),
 	.video_vs(vs),
-	.video_ce(ce_pix),
+	.video_ce(ce_pix_old),
 	.tv15Khz_mode(1),
 	.separate_audio(1'b0),
 	.audio_out_l(audio_l),
 	.audio_out_r(audio_r),
 	//.csd_audio_out(csd_audio),
-	.coin1(m_coin),
-	.coin2(1'b0),	
+	.coin1(m_coin|btn_coin_1),
+	.coin2(btn_coin_2),	
 
-	.start2(m_start2),
-	.start1(m_start1),
+	.start2(m_start2|btn_start_2),
+	.start1(m_start1|btn_start_1),
 
 	.p1_left(m_left), 
 	.p1_right(m_right),
@@ -429,7 +423,7 @@ Tapper Tapper
 	.p2_fire1(m_fire_2),
 	.p2_fire2(m_fire_22),
 	
-	.upright(1'b1),
+	.upright(status[12]),
 	.coin_meters(1),	
 	.demo_sound(status[8]),
 	.service(status[6]),
