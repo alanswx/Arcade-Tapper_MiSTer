@@ -1,5 +1,5 @@
 //============================================================================
-//  Arcade: Spy Hunter
+//  Arcade: Tapper
 //
 //  Port to MiSTer
 //  Copyright (C) 2019 Sorgelig
@@ -121,6 +121,7 @@ localparam CONF_STR = {
 	"O35,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
 	"-;",
 	"O6,Service,Off,On;",
+	"O7,Audio,Mono,Stereo;",
 	//"O8,Demo Sounds,Off,On;",
 	//"OC,Cabinet,Upright,Cocktail;",
 	"-;",
@@ -192,22 +193,23 @@ hps_io #(.STRLEN($size(CONF_STR)>>3)) hps_io
 
 wire [15:0] rom_addr;
 wire [15:0] rom_do;
-//wire [12:0] snd_addr;
 wire [13:0] snd_addr;
 wire [15:0] snd_do;
-//wire [14:1] csd_addr;
-//wire [15:0] csd_do;
 wire [14:0] sp_addr;
 wire [31:0] sp_do;
 
 // ROM structure:
 
 //  0000 -  DFFF - Main ROM (8 bit)
-//  E000 -  10FFF - Super Sound board ROM (8 bit)
-// 12000 -         Sprite ROMs (32 bit)
+//  E000 -  11FFF - Super Sound board ROM (8 bit)
+// 12000 -  31FFF - Sprite ROMs (32 bit)
+// 32000 -  39FFF - BG ROMS
+
+//wire [24:0] rom_ioctl_addr = ~ioctl_addr[16] ? ioctl_addr : // 8 bit ROMs
+//                             {ioctl_addr[24:16], ioctl_addr[15], ioctl_addr[13:0], ioctl_addr[14]}; // 16 bit ROM
 
 wire [24:0] sp_ioctl_addr = ioctl_addr - 17'h12000; //SP ROM offset: 0x12000
-wire [24:0] dl_addr = ioctl_addr - 18'h32000; // background + char grfx offset
+wire [24:0] dl_addr = ioctl_addr - 18'h32000; //background offset
 
 reg port1_req, port2_req;
 sdram sdram
@@ -288,8 +290,10 @@ always @(posedge clk_sys) begin
 			'h029: btn_fire        <= pressed; // space
 			'h014: btn_fire2       <= pressed; // ctrl
 
-			'h005: btn_one_player  <= pressed; // F1
-			'h006: btn_two_players <= pressed; // F2
+			'h005: btn_start_1     <= pressed; // F1
+			'h006: btn_start_2     <= pressed; // F2
+			'h004: btn_coin_1	   <= pressed; // F3
+			'h00C: btn_coin_2	   <= pressed; // F4
 
 			'h003: btn_cheat       <= pressed; // F5
 
@@ -313,9 +317,7 @@ reg btn_down  = 0;
 reg btn_right = 0;
 reg btn_left  = 0;
 reg btn_fire  = 0;
-reg btn_fire2  = 0;
-reg btn_one_player  = 0;
-reg btn_two_players = 0;
+reg btn_fire2 = 0;
 reg btn_cheat = 0;
 
 reg btn_start_1=0;
@@ -329,12 +331,12 @@ reg btn_right_2=0;
 reg btn_fire_2=0;
 reg btn_fire_22=0;
 
-wire m_up     =   btn_up    | joy[3];
-wire m_down   =   btn_down  | joy[2];
-wire m_left   =   btn_left  | joy[1];
-wire m_right  =   btn_right | joy[0];
-wire m_fire   = btn_fire | joy[4];
-//wire m_fire2  = btn_fire2 | joy[5];
+wire m_up     = btn_up    | joy[3];
+wire m_down   = btn_down  | joy[2];
+wire m_left   = btn_left  | joy[1];
+wire m_right  = btn_right | joy[0];
+wire m_fire   = btn_fire  | joy[4];
+wire m_fire2  = btn_fire2;
 
 wire m_up_2     = btn_up_2    | joy[3];
 wire m_down_2   = btn_down_2  | joy[2];
@@ -343,9 +345,10 @@ wire m_right_2  = btn_right_2 | joy[0];
 wire m_fire_2   = btn_fire_2;
 wire m_fire_22  = btn_fire_22;
 
-wire m_start1 = btn_one_player  | joy[5];
-wire m_start2 = btn_two_players | joy[6];
-wire m_coin   = btn_start_1 | joy[7];
+wire m_start1 = btn_start_1  | joy[5];
+wire m_start2 = btn_start_2  | joy[6];
+wire m_coin   = btn_coin_1   | joy[7];
+wire m_coin2  = btn_coin_2;
 
 
 wire ce_pix_old;
@@ -365,7 +368,8 @@ end
 
 // 512x480
 //arcade_rotate_fx #(496,240,9) arcade_video
-arcade_fx #(480,9) arcade_video
+//arcade_fx #(480,9) arcade_video
+arcade_fx #(512,9) arcade_video//505?
 (
 	.*,
 
@@ -399,15 +403,15 @@ Tapper Tapper
 	.video_vs(vs),
 	.video_ce(ce_pix_old),
 	.tv15Khz_mode(1),
-	.separate_audio(1'b0),
+	//.separate_audio(1'b1),
+	.separate_audio(status[7]),
 	.audio_out_l(audio_l),
 	.audio_out_r(audio_r),
-	//.csd_audio_out(csd_audio),
-	.coin1(m_coin|btn_coin_1),
-	.coin2(btn_coin_2),	
+	.coin1(m_coin),
+	.coin2(m_coin2),	
 
-	.start2(m_start2|btn_start_2),
-	.start1(m_start1|btn_start_1),
+	.start2(m_start2),
+	.start1(m_start1),
 
 	.p1_left(m_left), 
 	.p1_right(m_right),
@@ -425,14 +429,12 @@ Tapper Tapper
 	
 	.upright(status[12]),
 	.coin_meters(1),	
-	.demo_sound(status[8]),
+	//.demo_sound(status[8]),
 	.service(status[6]),
 	.cpu_rom_addr ( rom_addr ),
 	.cpu_rom_do   ( rom_addr[0] ? rom_do[15:8] : rom_do[7:0] ),
 	.snd_rom_addr ( snd_addr ),
 	.snd_rom_do   ( snd_addr[0] ? snd_do[15:8] : snd_do[7:0] ),
-	//.bg_rom_addr  ( bg_addr ),
-	//.bg_rom_do    ( bg_do ),
 	.sp_addr      ( sp_addr ),
 	.sp_graphx32_do ( sp_do ),
 	.dl_addr      ( dl_addr    ),

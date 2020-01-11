@@ -74,7 +74,6 @@ port(
  audio_out_l : out std_logic_vector(15 downto 0);
  audio_out_r : out std_logic_vector(15 downto 0);
 
---uncomment these
  cpu_rom_addr : out std_logic_vector(13 downto 0);
  cpu_rom_do : in std_logic_vector(7 downto 0);
 
@@ -103,9 +102,8 @@ architecture struct of tapper_sound_board is
  signal cpu_ioreq_n : std_logic;
  signal cpu_irq_n   : std_logic;
  signal cpu_m1_n    : std_logic;
-
---comment this 
- --signal cpu_rom_do  : std_logic_vector( 7 downto 0);
+ 
+-- signal cpu_rom_do  : std_logic_vector( 7 downto 0);
  
  signal wram_we     : std_logic;
  signal wram_do     : std_logic_vector( 7 downto 0);
@@ -177,12 +175,12 @@ clock_sndn <= not clock_40;
 reset_n    <= not reset;
 
 -- debug 
---process (reset, clock_snd)
---begin
--- if rising_edge(clock_snd) and cpu_ena ='1' and cpu_mreq_n ='0' then
---  dbg_cpu_addr <= cpu_addr;
--- end if;
---end process;
+process (reset, clock_snd)
+begin
+ if rising_edge(clock_snd) and cpu_ena ='1' and cpu_mreq_n ='0' then
+  dbg_cpu_addr <= cpu_addr;
+ end if;
+end process;
 
 -- make enables clock from clock_snd
 process (clock_snd, reset)
@@ -439,7 +437,6 @@ port map(
   DO      => cpu_do
 );
 
---testing comment
 -- cpu program ROM 0x0000-0x3FFF
 --rom_cpu : entity work.tapper_sound_cpu
 --port map(
@@ -447,8 +444,7 @@ port map(
 -- addr => cpu_addr(13 downto 0),
 -- data => cpu_rom_do
 --);
-
-cpu_rom_addr <= cpu_addr(13 downto 0); --testing uncomment
+cpu_rom_addr <= cpu_addr(13 downto 0);
 
 -- working RAM   0x8000-0x83FF
 wram : entity work.gen_ram

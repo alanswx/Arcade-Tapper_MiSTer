@@ -1,27 +1,23 @@
 ---------------------------------------------------------------------------------
 -- 
--- Arcade: Spy Hunter port to MiSTer by Sorgelig
--- 26 December 2019
+-- Arcade: Tapper port to MiSTer by Sorgelig
+-- 10 January 2020
 -- 
 ---------------------------------------------------------------------------------
--- Spy hunter by Dar (darfpga@aol.fr) (06/12/2019)
+-- Tapper by Dar (darfpga@aol.fr) (22/11/2019)
 -- http://darfpga.blogspot.fr
 ---------------------------------------------------------------------------------
 -- 
 -- 
--- Support screen and controls rotation on HDMI output.
--- Only controls are rotated on VGA output.
 -- 
 -- 
 -- Keyboard inputs :
 --
---   F3      : Coin
---   TAB     : VAN
---   Z       : Shift
---   shift   : Oil
---   ctrl    : Smoke
---   alt     : Missle
---   Space   : Gun
+--   F1      : Start 1
+--   F2      : Start 2
+--   F3      : Coin 1
+--   F4      : Coin 2
+--   Space   : Serve
 --   UP,DOWN,LEFT,RIGHT arrows : Movements
 --
 -- Joystick support.
