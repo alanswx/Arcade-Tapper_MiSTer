@@ -1,12 +1,12 @@
 <misterromdescription>
-	<name>Tapper</name>
-	<mameversion>0216</mameversion>
-	<mratimestamp>201912310000</mratimestamp>
+	<name>Tapper (Budweiser, 1-27-84)</name>
+	<mameversion>0217</mameversion>
+	<mratimestamp>20200111215805</mratimestamp>
 	<year>1983</year>
 	<manufacturer>Bally Midway</manufacturer>
-	<category>Action</category>
+	<category>Maze / Food</category>
 	<rbf>tapper</rbf>
-	<rom index="0" zip="tapper.zip" md5="7300967c61a0f1b887c12f3989e500bb" type="merged|nonmerged">
+	<rom index="0" zip="tapper.zip" md5="7300967c61a0f1b887c12f3989e500bb">
 		<part crc="bb060bb0" name="tapper_c.p.u._pg_0_1c_1-27-84.1c"/>
 		<part crc="fd9acc22" name="tapper_c.p.u._pg_1_2c_1-27-84.2c"/>
 		<part crc="b3755d41" name="tapper_c.p.u._pg_2_3c_1-27-84.3c"/>
