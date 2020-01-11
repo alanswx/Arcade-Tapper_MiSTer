@@ -124,6 +124,7 @@ localparam CONF_STR = {
 	"O7,Audio,Mono,Stereo;",
 	//"O8,Demo Sounds,Off,On;",
 	//"OC,Cabinet,Upright,Cocktail;",
+	"OD,Deinterlacer,Off,On;",
 	"-;",
 	"R0,Reset;",
 	"J1,Serve,Start 1P,Start 2P,Coin;",
@@ -372,7 +373,7 @@ end
 arcade_fx #(512,9) arcade_video//505?
 (
 	.*,
-
+	.ce_pix(status[13] ? ce_pix_old: ce_pix),
 	.clk_video(clk_sys),
 	.RGB_in({r,g,b}),
 	.HBlank(hblank),
@@ -402,7 +403,7 @@ Tapper Tapper
 	.video_hs(hs),
 	.video_vs(vs),
 	.video_ce(ce_pix_old),
-	.tv15Khz_mode(1),
+	.tv15Khz_mode(~status[13]),
 	//.separate_audio(1'b1),
 	.separate_audio(status[7]),
 	.audio_out_l(audio_l),
