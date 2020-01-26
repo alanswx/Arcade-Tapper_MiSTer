@@ -120,15 +120,15 @@ localparam CONF_STR = {
 	//"H0O2,Orientation,Vert,Horz;",
 	"O35,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
 	"-;",
+	"DIP;",
+	"-;",
 	"O6,Service,Off,On;",
 	"O7,Audio,Mono,Stereo;",
-	//"O8,Demo Sounds,Off,On;",
-	//"OC,Cabinet,Upright,Cocktail;",
 	"OD,Deinterlacer,Off,On;",
 	"-;",
 	"R0,Reset;",
-	"J1,Serve,Start 1P,Start 2P,Coin;",
-	"jn,A,Start,Select,R;",
+	"J1,Fire1,Fire2,Start,Coin;",
+	"jn,A,B,Start,R;",
 	"V,v",`BUILD_DATE
 };
 
@@ -158,6 +158,7 @@ wire        ioctl_download;
 wire        ioctl_wr;
 wire [24:0] ioctl_addr;
 wire  [7:0] ioctl_dout;
+wire  [7:0] ioctl_index;
 
 wire [10:0] ps2_key;
 
@@ -185,6 +186,7 @@ hps_io #(.STRLEN($size(CONF_STR)>>3)) hps_io
 	.ioctl_wr(ioctl_wr),
 	.ioctl_addr(ioctl_addr),
 	.ioctl_dout(ioctl_dout),
+	.ioctl_index(ioctl_index),
 
 	.joystick_0(joystick_0),
 	.joystick_1(joystick_1),
@@ -200,7 +202,6 @@ wire [14:0] sp_addr;
 wire [31:0] sp_do;
 
 // ROM structure:
-
 //  0000 -  DFFF - Main ROM (8 bit)
 //  E000 -  11FFF - Super Sound board ROM (8 bit)
 // 12000 -  31FFF - Sprite ROMs (32 bit)
@@ -224,13 +225,13 @@ sdram sdram
 	.port1_ack     ( ),
 	.port1_a       ( ioctl_addr[23:1] ),
 	.port1_ds      ( {ioctl_addr[0], ~ioctl_addr[0]} ),
-	.port1_we      ( ioctl_download ),
+	.port1_we      ( rom_download ),
 	.port1_d       ( {ioctl_dout, ioctl_dout} ),
 	.port1_q       ( ),
 
-	.cpu1_addr     ( ioctl_download ? 16'hffff : {1'b0, rom_addr[15:1]} ),
+	.cpu1_addr     ( rom_download ? 16'hffff : {1'b0, rom_addr[15:1]} ),
 	.cpu1_q        ( rom_do ),
-	.cpu2_addr     ( ioctl_download ? 16'hffff : (16'h7000 + snd_addr[13:1]) ),
+	.cpu2_addr     ( rom_download ? 16'hffff : (16'h7000 + snd_addr[13:1]) ),
 	.cpu2_q        ( snd_do ),
 	
 
@@ -239,30 +240,31 @@ sdram sdram
 	.port2_ack     ( ),
 	.port2_a       ( {sp_ioctl_addr[18:17], sp_ioctl_addr[14:0], sp_ioctl_addr[16]} ), // merge sprite roms to 32-bit wide words
 	.port2_ds      ( {sp_ioctl_addr[15], ~sp_ioctl_addr[15]} ),
-	.port2_we      ( ioctl_download ),
+	.port2_we      ( rom_download ),
 	.port2_d       ( {ioctl_dout, ioctl_dout} ),
 	.port2_q       ( ),
 
-	.sp_addr       ( ioctl_download ? 15'h7fff : sp_addr ),
+	.sp_addr       ( rom_download ? 15'h7fff : sp_addr ),
 	.sp_q          ( sp_do )
 );
 
 // ROM download controller
 always @(posedge clk_sys) begin
-	reg        ioctl_wr_last = 0;
+        reg        ioctl_wr_last = 0;
 
-	ioctl_wr_last <= ioctl_wr;
-	if (ioctl_download) begin
-		if (~ioctl_wr_last && ioctl_wr) begin
-			port1_req <= ~port1_req;
-			port2_req <= ~port2_req;
-		end
-	end
+        ioctl_wr_last <= ioctl_wr && !ioctl_index;
+        if (rom_download) begin
+                if (~ioctl_wr_last && (ioctl_wr && !ioctl_index)) begin
+                        port1_req <= ~port1_req;
+                        port2_req <= ~port2_req;
+                end
+        end
 end
 
 // reset signal generation
 reg reset = 1;
 reg rom_loaded = 0;
+
 always @(posedge clk_sys) begin
 	reg ioctl_downloadD;
 	reg [15:0] reset_count;
@@ -272,7 +274,7 @@ always @(posedge clk_sys) begin
 	if (RESET | status[0] | buttons[1] | ~rom_loaded) reset_count <= 16'hffff;
 	else if (reset_count != 0) reset_count <= reset_count - 1'd1;
 
-	if (ioctl_downloadD & ~ioctl_download) rom_loaded <= 1;
+	if (ioctl_downloadD & ~rom_download) rom_loaded <= 1;
 	reset <= RESET | status[0] | buttons[1] | ~rom_loaded | (reset_count == 16'h0001);
 end
 
@@ -288,15 +290,15 @@ always @(posedge clk_sys) begin
 			'hX72: btn_down        <= pressed; // down
 			'hX6B: btn_left        <= pressed; // left
 			'hX74: btn_right       <= pressed; // right
-			'h029: btn_fire        <= pressed; // space
-			'h014: btn_fire2       <= pressed; // ctrl
+			'h029: btn_fire1a      <= pressed; // space
+			'h014: btn_fire1b      <= pressed; // ctrl
 
 			'h005: btn_start_1     <= pressed; // F1
 			'h006: btn_start_2     <= pressed; // F2
 			'h004: btn_coin_1	   <= pressed; // F3
 			'h00C: btn_coin_2	   <= pressed; // F4
 
-			'h003: btn_cheat       <= pressed; // F5
+			//'h003: btn_cheat       <= pressed; // F5
 
 			// JPAC/IPAC/MAME Style Codes
 			'h016: btn_start_1     <= pressed; // 1
@@ -307,51 +309,104 @@ always @(posedge clk_sys) begin
 			'h02B: btn_down_2      <= pressed; // F
 			'h023: btn_left_2      <= pressed; // D
 			'h034: btn_right_2     <= pressed; // G
-			'h01C: btn_fire_2      <= pressed; // A
+			'h01C: btn_fire2a      <= pressed; // A
 			//need btn_fire_22
 		endcase
 	end
 end
 
-reg btn_up    = 0;
-reg btn_down  = 0;
-reg btn_right = 0;
-reg btn_left  = 0;
-reg btn_fire  = 0;
-reg btn_fire2 = 0;
-reg btn_cheat = 0;
+reg btn_up     = 0;
+reg btn_down   = 0;
+reg btn_right  = 0;
+reg btn_left   = 0;
+reg btn_fire1a = 0;
+reg btn_fire1b = 0;
+//reg btn_cheat  = 0;
 
-reg btn_start_1=0;
-reg btn_start_2=0;
-reg btn_coin_1=0;
-reg btn_coin_2=0;
-reg btn_up_2=0;
-reg btn_down_2=0;
-reg btn_left_2=0;
-reg btn_right_2=0;
-reg btn_fire_2=0;
-reg btn_fire_22=0;
+reg btn_start_1 = 0;
+reg btn_start_2 = 0;
+reg btn_coin_1  = 0;
+reg btn_coin_2  = 0;
+reg btn_up_2    = 0;
+reg btn_down_2  = 0;
+reg btn_left_2  = 0;
+reg btn_right_2 = 0;
+reg btn_fire2a  = 0;
+reg btn_fire2b  = 0;
 
-wire m_up     = btn_up    | joy[3];
-wire m_down   = btn_down  | joy[2];
-wire m_left   = btn_left  | joy[1];
-wire m_right  = btn_right | joy[0];
-wire m_fire   = btn_fire  | joy[4];
-wire m_fire2  = btn_fire2;
+wire m_up1    = btn_up      | joystick_0[3];
+wire m_down1  = btn_down    | joystick_0[2];
+wire m_left1  = btn_left    | joystick_0[1];
+wire m_right1 = btn_right   | joystick_0[0];
+wire m_fire1a = btn_fire1a  | joystick_0[4];
+wire m_fire1b = btn_fire1b  | joystick_0[5];
 
-wire m_up_2     = btn_up_2    | joy[3];
-wire m_down_2   = btn_down_2  | joy[2];
-wire m_left_2   = btn_left_2  | joy[1];
-wire m_right_2  = btn_right_2 | joy[0];
-wire m_fire_2   = btn_fire_2;
-wire m_fire_22  = btn_fire_22;
+wire m_up2    = btn_up_2    | joystick_1[3];
+wire m_down2  = btn_down_2  | joystick_1[2];
+wire m_left2  = btn_left_2  | joystick_1[1];
+wire m_right2 = btn_right_2 | joystick_1[0];
+wire m_fire2a = btn_fire2a  | joystick_1[4];
+wire m_fire2b = btn_fire2b  | joystick_1[5];
 
-wire m_start1 = btn_start_1  | joy[5];
-wire m_start2 = btn_start_2  | joy[6];
-wire m_coin   = btn_coin_1   | joy[7];
+wire m_start1 = btn_start_1 | joystick_0[6];
+wire m_start2 = btn_start_2 | joystick_1[6];
+
+wire m_coin1  = btn_coin_1  | joystick_0[7] | joystick_1[7];
 wire m_coin2  = btn_coin_2;
 
+reg  [7:0] input_0;
+reg  [7:0] input_1;
+reg  [7:0] input_2;
+reg  [7:0] input_3;
+reg  [7:0] input_4;
 
+reg service;
+assign service = status[6];
+
+reg mod_tapper    = 0;
+reg mod_timber    = 0;
+
+always @(posedge clk_sys) begin
+	reg [7:0] mod = 0;
+	if (ioctl_wr & (ioctl_index==1)) mod <= ioctl_dout;
+
+        mod_tapper    <= ( mod == 0 );
+        mod_timber    <= ( mod == 1 );
+end
+
+// load the DIPS
+reg [7:0] sw[8];
+always @(posedge clk_sys) if (ioctl_wr && (ioctl_index==254) && !ioctl_addr[24:3]) sw[ioctl_addr[2:0]] <= ioctl_dout;
+
+
+// Game specific sound board/DIP/input settings
+always @(*) begin
+
+	input_0 = 8'hff;
+	input_1 = 8'hff;
+	input_2 = 8'hff;
+	input_3 = sw[0];
+	input_4 = 8'hff;
+
+
+	if (mod_tapper) begin
+                input_0 = ~{ service, 3'b0, m_start2, m_start1, m_coin2, m_coin1 };
+                input_1 = ~{ 2'b0, m_fire1b, m_fire1a, m_up1, m_down1, m_left1, m_right1 };
+                input_2 = ~{ 2'b0, m_fire2b, m_fire2a, m_up2, m_down2, m_left2, m_right2 };
+                //input_3 = {coin_meters, upright, 3'b111, demo_sound, 2'b11 };
+                input_4 = 8'hFF;
+				
+    end else if (mod_timber) begin
+                input_0 = ~{ service, 3'b0, m_start2, m_start1, m_coin2, m_coin1 };
+                input_1 = ~{ 2'b0, m_fire1b, m_fire1a, m_up1, m_down1, m_left1, m_right1 };
+                input_2 = ~{ 2'b0, m_fire2b, m_fire2a, m_up2, m_down2, m_left2, m_right2 };
+                //input_3 = {coin_meters, upright, 3'b111, demo_sound, 2'b11 };
+                input_4 = 8'hFF;					 
+ 				 
+	end
+end
+
+wire rom_download = ioctl_download && !ioctl_index;
 wire ce_pix_old;
 wire hblank, vblank;
 wire hs, vs;
@@ -370,7 +425,8 @@ end
 // 512x480
 //arcade_rotate_fx #(496,240,9) arcade_video
 //arcade_fx #(480,9) arcade_video
-arcade_fx #(512,9) arcade_video//505?
+//arcade_fx #(512,9) arcade_video
+arcade_video #(512,480,9) arcade_video
 (
 	.*,
 	.ce_pix(status[13] ? ce_pix_old: ce_pix),
@@ -381,12 +437,13 @@ arcade_fx #(512,9) arcade_video//505?
 	.HSync(hs),
 	.VSync(vs),
 
+	.no_rotate(1),
+	.rotate_ccw(0),
 	.fx(status[5:3])
 );
 
 assign AUDIO_S = 0;
 wire [15:0] audio_l, audio_r;
-
 
 assign AUDIO_L = audio_l;
 assign AUDIO_R = audio_r;
@@ -408,30 +465,11 @@ Tapper Tapper
 	.separate_audio(status[7]),
 	.audio_out_l(audio_l),
 	.audio_out_r(audio_r),
-	.coin1(m_coin),
-	.coin2(m_coin2),	
-
-	.start2(m_start2),
-	.start1(m_start1),
-
-	.p1_left(m_left), 
-	.p1_right(m_right),
-	.p1_up(m_up),
-	.p1_down(m_down),
-	.p1_fire1(m_fire),
-	.p1_fire2(m_fire2),
-
-	.p2_left(m_left_2),
-	.p2_right(m_right_2),
-	.p2_up(m_up_2),
-	.p2_down(m_down_2),
-	.p2_fire1(m_fire_2),
-	.p2_fire2(m_fire_22),
-	
-	.upright(status[12]),
-	.coin_meters(1),	
-	//.demo_sound(status[8]),
-	.service(status[6]),
+	.input_0      ( input_0),
+	.input_1      ( input_1),
+	.input_2      ( input_2),
+	.input_3      ( input_3),
+	.input_4      ( input_4),	
 	.cpu_rom_addr ( rom_addr ),
 	.cpu_rom_do   ( rom_addr[0] ? rom_do[15:8] : rom_do[7:0] ),
 	.snd_rom_addr ( snd_addr ),
@@ -439,11 +477,9 @@ Tapper Tapper
 	.sp_addr      ( sp_addr ),
 	.sp_graphx32_do ( sp_do ),
 	.dl_addr      ( dl_addr    ),
-	.dl_wr        ( ioctl_wr   ),
+	.dl_wr        ( ioctl_wr & !ioctl_index),
 	.dl_data      ( ioctl_dout )
 );
-
-
 
 
 
